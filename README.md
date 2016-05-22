@@ -5,4 +5,4 @@ node.js + socket + chessboard.js chess app
 
 # Disclaimer
 
-This was an assignment for one of my classes made in 3-6 hours (a good deal of app.js is ugly/half-assed).
+This was an assignment for one of my classes made in 3-6 hours (a good deal of the js is ugly/half-assed).
