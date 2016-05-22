@@ -1,0 +1,216 @@
+<html>
+  <head>
+	<script src="js/chessboard-0.3.0.js"></script>
+	<script src="js/jquery-2.1.4.min.js"></script>
+	<script src="js/chess.js"></script>
+	<link rel="stylesheet" href="css/chessboard-0.3.0.css" />
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<style> 
+		.highlight-white {
+			background-color: #CED26B;
+		}
+		
+		.highlight-black {
+			background-color: #AAA23B;
+		}
+		
+		.label-black {
+			background-color: #000;
+			color: #FFF;
+		}
+		
+		.label-white {
+			background-color: #FFF;
+			color: #404040;
+		}
+		
+		.btn-black {
+			background-color: #000;
+			border-color: #000;
+			color: #FFF;
+		}
+		
+		.btn:focus {
+			color: #FFF;
+		}
+		
+		.btn-white {
+			background-color: #FFF;
+			border-color: #FFF;
+			color: #404040;
+		}
+	</style>
+	<title>Chess</title>
+    <script>
+      var ws = new WebSocket('ws://' + window.document.location.host);
+	  
+	  var board = null, game = null, lastSquareTo, lastSquareFrom = null, currentSide = null;
+	  var lastMove = null;
+	  var side;
+	  var both = 0;
+	  var name = "";
+	  
+      ws.onmessage = function(message) {
+	    move = JSON.parse(message.data);
+		console.log(move);
+		
+		if(!move.white || !move.black) {
+			$("#turn").addClass("hidden"); // game hasn't started yet
+		}
+		
+		if(move.white || move.black) {
+			if(move.white) {
+				$("#whiteButton").addClass("active");
+			} else if(move.black) {
+				$("#blackButton").addClass("active");
+			}
+
+			if(move.white == name) { 
+				side = 'w';
+			} else if(move.black == name) {
+				side = 'b';
+				if(board.orientation() == "white") board.flip();
+			}
+			if(move.white && move.black) {
+				updateTurnButton();	
+				$("#join").addClass("hidden");
+				$("#whiteButton").addClass("active");
+				$("#blackButton").addClass("active");
+				$("#names").removeClass("hidden");
+				$("#names").html(move.white + " vs " + move.black);
+				$("#username").addClass("hidden");
+			}
+		}
+		
+		if(move.online) $("#online").html(move.online + "/2 connected");
+		if(move.currentFEN != null) {
+			if(move.currentFEN != game.fen()) {
+				console.log("Updating inconsistent FEN");
+				board.position(move.FEN); // n-1'th FEN
+				move = move.lastMove;
+				if(move.from && move.to) {
+					board.move(move.from + '-' + move.to);
+					game.move({
+						from: move.from,
+						to: move.to,
+						promotion: 'q' 
+					 });
+					highlight(move);
+					board.position(move.currentFEN);
+					game.load(move.FEN);
+					return;
+				} 
+			}
+		}
+		if(move.from && move.to) {
+				board.move(move.from + '-' + move.to);
+				game.move({
+					from: move.from,
+					to: move.to,
+					promotion: 'q' 
+				 });
+				board.position(board.fen());
+				highlight(move);
+		} 
+		
+      };
+      
+      function sendMove(move) {	
+        move = JSON.parse(move);
+	    move.FEN = game.fen(); // add the fen
+        ws.send(JSON.stringify(move));
+      }
+	  
+	  var updateTurnButton = function() {
+		if(game.turn() == 'w') {
+			$("#turn").removeClass("hidden");
+			$("#turn").html("White's turn!");
+			$("#turn").removeClass("label-black"); 
+			$("#turn").addClass("label-white");
+		} else if(game.turn() == 'b') {
+			$("#turn").removeClass("hidden");
+			$("#turn").html("Black's turn!");
+			$("#turn").removeClass("label-white"); 
+			$("#turn").addClass("label-black");
+		}
+	  }
+	  
+	  var join = function(side) {
+		name = $("#username").val();
+		both++;
+		if(name.length > 0) {
+			ws.send(JSON.stringify({username: name, color: side}));
+		}
+	  } 
+	  
+	  var init = function() {
+	    game = new Chess();
+		board = ChessBoard('board', {
+			draggable: true,
+			moveSpeed: 'fast',
+			snapbackSpeed: 200,
+			snapSpeed: 100,
+			position: 'start',
+			onDrop: onDrop,
+			onSnapEnd: onSnapEnd
+		});
+		updateTurnButton();
+	  }	
+	  
+	  var onSnapEnd = function() {
+		board.position(game.fen());
+	  }
+	  
+	  var onDragStart = function(source, piece, position, orientation) {
+		  if (game.game_over() === true ||
+			  (game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+			  (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+			return false;
+		  }
+	  };
+	  
+	  var highlight = function(move) {
+		if(move) {
+			var squareTo = $('#board').find('.square-' + move.to);
+			var squareFrom = $('#board').find('.square-' + move.from)
+			if(lastSquareTo) { lastSquareTo.removeClass('highlight-black'); lastSquareTo.removeClass('highlight-white'); }
+			if(lastSquareFrom) { lastSquareFrom.removeClass('highlight-black'); lastSquareFrom.removeClass('highlight-white'); }
+			lastSquareTo = squareTo;
+			lastSquareFrom = squareFrom;
+			squareTo.addClass(squareTo.hasClass('black-3c85d') ? 'highlight-black' : 'highlight-white');
+			squareFrom.addClass(squareFrom.hasClass('black-3c85d') ? 'highlight-black' : 'highlight-white');
+			lastMove = move;
+			updateTurnButton();
+		}
+	  }
+
+	  var onDrop = function(source, target) {
+		if(game.turn() != side && both < 2) return 'snapback';
+		  var move = game.move({
+			from: source,
+			to: target,
+			promotion: 'q' 
+		  });
+		  if (move === null) return 'snapback';
+		  sendMove(JSON.stringify(move));
+		  highlight(move);
+	 };
+	  
+	  $(document).ready(init);
+    </script>
+  </head>
+  <body style="background-color:#1d1f21">
+  </br>
+  <iframe width="0" height="0" src="https://www.youtube.com/embed/XYOnvRn7OaE?autoplay=1" frameborder="0" allowfullscreen></iframe>
+  <div id="container" style="margin:0% auto; width: 648px">
+	  <h3><span class="label label-info label-lg">Chess</span> <span id="online" class="label label-warning label-lg">0/2 connected</span> <span id="names" class="hidden label label-danger label-lg"></span> <span id="turn" style="float:right" class="hidden label label-info label-black">Black's turn!</span></h3>
+	   <div id="board" style="width: 648px"></div> <!-- 648px is ideal for native icon res of 80x80 px -->
+	   </br>
+	   <button id="flipBoard" type="button" class="btn btn-success center-block btn-lg" onclick="board.flip(); highlight(lastMove)">Flip Board</button></br>
+	   <div class='wrapper text-center'><div id="join" class="btn-group"><button type="button" id="blackButton" class="btn btn-default center-block btn-lg" onclick="join('b')">Join Black</button>
+	   <button type="button" id="whiteButton" class="btn btn-default center-block btn-lg" onclick="join('w')">Join White</button></span></div></div>
+		 </br><input style="width: 150px; margin: 0px auto" type="Username" class="form-control" id="username" placeholder="Username">
+		</br> 
+  </div>
+  </body>
+</html>
