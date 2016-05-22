@@ -5,4 +5,4 @@ node.js + websocket chess app for 2406
 
 # Disclaimer
 
-This was an assignment for one of my classes made in 1-2 days (some of it is half-assed).
+This was an assignment for one of my classes made in 1-2 days (a good deal of app.js is ugly/half-assed).
