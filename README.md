@@ -1,5 +1,5 @@
 # comp2406a2
-node.js + websocket chess app for 2406
+node.js + socket + chessboard.js chess app
 
 ![](https://raw.githubusercontent.com/qubard/comp2406a2/master/screenshot.png)
 
