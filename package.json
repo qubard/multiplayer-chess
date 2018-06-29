@@ -7,5 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "cub",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "connect": "^3.6.6",
+    "expressjs": "^1.0.1",
+    "ws": "^5.2.1"
+  }
 }
